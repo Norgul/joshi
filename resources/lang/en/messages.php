@@ -1105,6 +1105,7 @@
   'footer' => 'Footer',
   'image_left' => 'Image left',
   'image_right' => 'Image right',
+  'prev_next' => 'Prev/Next',
   'custom_header' => 'Custom Header',
   'add_list_custom_header' => 'Add custom Header',
   'elements' => 'Elements',

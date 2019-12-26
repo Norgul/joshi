@@ -69,7 +69,7 @@ class AutoEvent extends Model
      * @var array
      */
     protected $fillable = [
-        'event_type',
+        'event_type', 'previous_event_id'
     ];
 
     /**
@@ -80,6 +80,15 @@ class AutoEvent extends Model
     public function automation()
     {
         return $this->belongsTo('MailChamp\Model\Automation');
+    }
+
+    public function relatedEvents()
+    {
+        $autoEvents = AutoEvent::all()->where('automation_id', $this->automation_id)->toArray();
+
+        return array_filter($autoEvents, function($event){
+            return $event['id'] != $this->id;
+        });
     }
 
     /**
@@ -219,40 +228,40 @@ class AutoEvent extends Model
         switch ($this->event_type) {
             case self::TYPE_SPECIFIC_DATETIME:
                 $rules = [
-                    'specific_day' => 'required',
+                    'specific_day'  => 'required',
                     'specific_time' => 'required',
                 ];
                 break;
             case self::TYPE_WEEKLY_RECURRING:
                 $rules = [
                     'weekly_recurring_weekdays' => 'required',
-                    'weekly_recurring_weeks' => 'required',
-                    'weekly_recurring_months' => 'required',
-                    'weekly_recurring_time' => 'required',
+                    'weekly_recurring_weeks'    => 'required',
+                    'weekly_recurring_months'   => 'required',
+                    'weekly_recurring_time'     => 'required',
                 ];
                 break;
             case self::TYPE_MONTHLY_RECURRING:
                 $rules = [
-                    'monthly_recurring_days' => 'required',
+                    'monthly_recurring_days'   => 'required',
                     'monthly_recurring_months' => 'required',
-                    'monthly_recurring_time' => 'required',
+                    'monthly_recurring_time'   => 'required',
                 ];
                 break;
             case self::TYPE_SUBSCRIBER_EVENT:
                 $rules = [
                     'subscriber_event' => 'required',
-                    'delay_type' => 'required',
-                    'delay_value' => 'required',
-                    'delay_unit' => 'required',
+                    'delay_type'       => 'required',
+                    'delay_value'      => 'required',
+                    'delay_unit'       => 'required',
                 ];
                 break;
             case self::TYPE_CUSTOM_CRITERIA:
                 if (isset($request->custom_criteria)) {
                     foreach ($request->custom_criteria as $key => $param) {
-                        $rules['custom_criteria.'.$key.'.field_uid'] = 'required';
-                        $rules['custom_criteria.'.$key.'.operator'] = 'required';
+                        $rules['custom_criteria.' . $key . '.field_uid'] = 'required';
+                        $rules['custom_criteria.' . $key . '.operator'] = 'required';
                         if (!in_array($param['operator'], [self::OPERATOR_BLANK, self::OPERATOR_NOT_BLANK])) {
-                            $rules['custom_criteria.'.$key.'.value'] = 'required';
+                            $rules['custom_criteria.' . $key . '.value'] = 'required';
                         }
                     }
                 } else {
@@ -302,9 +311,9 @@ class AutoEvent extends Model
             case self::TYPE_CUSTOM_CRITERIA:
                 // Delay time
                 $this->updateData([
-                    'delay_type' => isset($params['delay_type']) ? $params['delay_type'] : 'before',
+                    'delay_type'  => isset($params['delay_type']) ? $params['delay_type'] : 'before',
                     'delay_value' => isset($params['delay_value']) ? $params['delay_value'] : '0',
-                    'delay_unit' => isset($params['delay_unit']) ? $params['delay_unit'] : 'day',
+                    'delay_unit'  => isset($params['delay_unit']) ? $params['delay_unit'] : 'day',
                     'at' => $params['at'] ? \MailChamp\Library\Tool::systemTimeFromString('2017-07-07'.$params['at'], \Auth::user()->timezone)->format('H:i') : '',
                 ]);
                 break;
@@ -379,11 +388,11 @@ class AutoEvent extends Model
             case self::TYPE_FOLLOW_UP_CLICKED:
             case self::TYPE_FOLLOW_UP_NOT_CLICKED:
                 // if(!isset($params["delay_value"]) && !isset($params["delay_unit"])) {
-                    $this->updateData([
-                        'delay_type' => 'after',
-                        'delay_value' => $params['delay_value'],
-                        'delay_unit' => $params['delay_unit'],
-                    ]);
+                $this->updateData([
+                    'delay_type'  => 'after',
+                    'delay_value' => $params['delay_value'],
+                    'delay_unit'  => $params['delay_unit'],
+                ]);
                 // }
                 break;
         }
@@ -481,7 +490,7 @@ class AutoEvent extends Model
                 if (!empty($this->getDataValue('delay_value'))) {
                     $msg = trans('messages.event_type_list_subscription_description_with_delay', [
                         'list_name' => $this->automation->defaultMailList->name,
-                        'delay' => $this->getDelayMessage(),
+                        'delay'     => $this->getDelayMessage(),
                     ]);
                 } else {
                     $msg = trans('messages.event_type_list_subscription_description', [
@@ -493,7 +502,7 @@ class AutoEvent extends Model
                 if (!empty($this->getDataValue('delay_value'))) {
                     $msg = trans('messages.event_type_list_unsubscription_description_with_delay', [
                         'list_name' => $this->automation->defaultMailList->name,
-                        'delay' => $this->getDelayMessage(),
+                        'delay'     => $this->getDelayMessage(),
                     ]);
                 } else {
                     $msg = trans('messages.event_type_list_unsubscription_description', [
@@ -509,7 +518,7 @@ class AutoEvent extends Model
                     $field = \MailChamp\Model\Field::findByUid($event);
                     $text = is_object($field) ? strtolower(trans('messages.subscriber_s_field', ['name' => $field->label])) : '';
                 } else {
-                    $text = strtolower(trans('messages.subscriber_s_field', ['name' => trans('messages.'.$event)]));
+                    $text = strtolower(trans('messages.subscriber_s_field', ['name' => trans('messages.' . $event)]));
                 }
                 if (!empty($this->getDataValue('delay_value'))) {
                     $msg = trans('messages.event_type_subscriber_event_description_with_delay', [
@@ -529,15 +538,15 @@ class AutoEvent extends Model
                     if (is_object($field)) {
                         if (in_array($criteria['operator'], [self::OPERATOR_BLANK, self::OPERATOR_NOT_BLANK])) {
                             $strings[] = trans('messages.event_type_custom_criteria_description_2', [
-                                'field' => $field->label,
-                                'operator' => trans('messages.'.$criteria['operator']),
-                                'value' => $criteria['value'],
+                                'field'    => $field->label,
+                                'operator' => trans('messages.' . $criteria['operator']),
+                                'value'    => $criteria['value'],
                             ]);
                         } else {
                             $strings[] = trans('messages.event_type_custom_criteria_description', [
-                                'field' => $field->label,
-                                'operator' => trans('messages.'.$criteria['operator']),
-                                'value' => $criteria['value'],
+                                'field'    => $field->label,
+                                'operator' => trans('messages.' . $criteria['operator']),
+                                'value'    => $criteria['value'],
                             ]);
                         }
                     }
@@ -545,12 +554,12 @@ class AutoEvent extends Model
 
                 if (!empty($this->getDataValue('delay_value'))) {
                     $msg = trans('messages.event_type_custom_criterias_description_with_delay', [
-                        'conditions' => implode(' '.trans('messages.criteria_and').' ', $strings),
-                        'delay' => $this->getDelayMessage(),
+                        'conditions' => implode(' ' . trans('messages.criteria_and') . ' ', $strings),
+                        'delay'      => $this->getDelayMessage(),
                     ]);
                 } else {
                     $msg = trans('messages.event_type_custom_criterias_description', [
-                        'conditions' => implode(' '.trans('messages.criteria_and').' ', $strings),
+                        'conditions' => implode(' ' . trans('messages.criteria_and') . ' ', $strings),
                     ]);
                 }
                 break;
@@ -561,13 +570,13 @@ class AutoEvent extends Model
             case self::TYPE_FOLLOW_UP_NOT_CLICKED:
                 if (empty($this->getDataValue('delay_value'))) {
                     $msg = trans('messages.follow_up_send_right_after', [
-                        'event' => trans('messages.follow_up_event_'.$this->event_type),
+                        'event' => trans('messages.follow_up_event_' . $this->event_type),
                     ]);
                 } else {
                     $msg = trans('messages.follow_up_description', [
                         'value' => $this->getDataValue('delay_value'),
                         'unit' => \MailChamp\Library\Tool::getPluralPrase($this->getDataValue('delay_unit'), $this->getDataValue('delay_value')),
-                        'event' => trans('messages.follow_up_event_'.$this->event_type),
+                        'event' => trans('messages.follow_up_event_' . $this->event_type),
                     ]);
                 }
                 break;
@@ -589,8 +598,8 @@ class AutoEvent extends Model
         if ($this->getDataValue('delay_value') !== null) {
             return trans('messages.delay_message', [
                 'value' => $this->getDataValue('delay_value'),
-                'unit' => trans('messages.'.$this->getDataValue('delay_unit')),
-                'type' => trans('messages.'.$this->getDataValue('delay_type')),
+                'unit'  => trans('messages.' . $this->getDataValue('delay_unit')),
+                'type'  => trans('messages.' . $this->getDataValue('delay_type')),
             ]);
         }
     }
@@ -635,7 +644,7 @@ class AutoEvent extends Model
             ['value' => self::TYPE_FOLLOW_UP, 'text' => strtolower(trans('messages.sent'))],
             ['value' => self::TYPE_FOLLOW_UP_OPENED, 'text' => strtolower(trans('messages.opened'))],
             ['value' => self::TYPE_FOLLOW_UP_NOT_OPENED, 'text' => strtolower(trans('messages.not_opened'))],
-                        ['value' => self::TYPE_FOLLOW_UP_CLICKED, 'text' => strtolower(trans('messages.clicked'))],
+            ['value' => self::TYPE_FOLLOW_UP_CLICKED, 'text' => strtolower(trans('messages.clicked'))],
             ['value' => self::TYPE_FOLLOW_UP_NOT_CLICKED, 'text' => strtolower(trans('messages.not_clicked'))],
         ];
     }
@@ -648,10 +657,10 @@ class AutoEvent extends Model
     public function addCampaign()
     {
         $campaign = new Campaign([
-            'name' => 'Untitled automation email',
-            'track_open' => true,
+            'name'        => 'Untitled automation email',
+            'track_open'  => true,
             'track_click' => true,
-            'sign_dkim' => true,
+            'sign_dkim'   => true,
         ]);
         $campaign->customer_id = $this->automation->customer_id;
         $campaign->is_auto = true;
@@ -692,7 +701,7 @@ class AutoEvent extends Model
      */
     public function check()
     {
-        $method = $this->camelize('check-for-'.$this->event_type);
+        $method = $this->camelize('check-for-' . $this->event_type);
 
         return $this->$method();
     }
@@ -705,10 +714,10 @@ class AutoEvent extends Model
     public function camelize($str)
     {
         return lcfirst(
-          implode('', array_map(
-              'ucfirst', array_map(
-                  'strtolower', explode(
-                  '-', $str))))
+            implode('', array_map(
+                'ucfirst', array_map(
+                'strtolower', explode(
+                '-', $str))))
         );
     }
 
@@ -757,7 +766,7 @@ class AutoEvent extends Model
     public function checkForCustomCriteria()
     {
         $subscribers = $this->subscribers()
-                            ->whereRaw(sprintf(table('subscribers').'.id NOT IN (SELECT COALESCE(subscriber_id, 0) FROM %s WHERE auto_event_id = %s)', table('auto_triggers'), $this->id))->get();
+            ->whereRaw(sprintf(table('subscribers') . '.id NOT IN (SELECT COALESCE(subscriber_id, 0) FROM %s WHERE auto_event_id = %s)', table('auto_triggers'), $this->id))->get();
         foreach ($subscribers as $subscriber) {
             MailLog::info(sprintf('Trigger sending custom-criteria email for automation `%s`, subscriber ID: %s, event ID: %s', $this->automation->name, $subscriber->id, $this->id));
             $this->fire(collect([$subscriber]), null, $this->getDelayInSeconds());
@@ -797,13 +806,13 @@ class AutoEvent extends Model
         // get subscribers that match the criteria
         if ($field == 'subscription_date') {
             $subscribers = $this->subscribers()
-                         ->whereRaw(sprintf('DATE_FORMAT(CONVERT_TZ(%5$s, %1$s, %2$s) + %3$s, \'%%m%%d\') = DATE_FORMAT(CONVERT_TZ(NOW(), %1$s, %2$s), \'%%m%%d\') AND DATE_FORMAT(CONVERT_TZ(\'2000-01-01 %4$s\', %1$s, %2$s), \'%%H%%i\') <= DATE_FORMAT(CONVERT_TZ(NOW(), %1$s, %2$s), \'%%H%%i\')', $dbZoneOffset, $userZoneOffset, $delayInterval, $at, table('subscribers.created_at')));
+                ->whereRaw(sprintf('DATE_FORMAT(CONVERT_TZ(%5$s, %1$s, %2$s) + %3$s, \'%%m%%d\') = DATE_FORMAT(CONVERT_TZ(NOW(), %1$s, %2$s), \'%%m%%d\') AND DATE_FORMAT(CONVERT_TZ(\'2000-01-01 %4$s\', %1$s, %2$s), \'%%H%%i\') <= DATE_FORMAT(CONVERT_TZ(NOW(), %1$s, %2$s), \'%%H%%i\')', $dbZoneOffset, $userZoneOffset, $delayInterval, $at, table('subscribers.created_at')));
         } else {
             $subscribers = $this->subscribers()
-                         ->join('subscriber_fields', 'subscribers.id', '=', 'subscriber_fields.subscriber_id')
-                         ->join('fields', 'subscriber_fields.field_id', '=', 'fields.id')
-                         ->where('fields.uid', $field)
-                         ->whereRaw(sprintf('DATE_FORMAT(STR_TO_DATE(%5$s, \'%%Y-%%m-%%d\') + %3$s, \'%%m%%d\') = DATE_FORMAT(CONVERT_TZ(NOW(), %1$s, %2$s), \'%%m%%d\') AND DATE_FORMAT(CONVERT_TZ(\'2000-01-01 %4$s\', %1$s, %2$s), \'%%H%%i\') <= DATE_FORMAT(CONVERT_TZ(NOW(), %1$s, %2$s), \'%%H%%i\')', $dbZoneOffset, $userZoneOffset, $delayInterval, $at, table('subscriber_fields.value')));
+                ->join('subscriber_fields', 'subscribers.id', '=', 'subscriber_fields.subscriber_id')
+                ->join('fields', 'subscriber_fields.field_id', '=', 'fields.id')
+                ->where('fields.uid', $field)
+                ->whereRaw(sprintf('DATE_FORMAT(STR_TO_DATE(%5$s, \'%%Y-%%m-%%d\') + %3$s, \'%%m%%d\') = DATE_FORMAT(CONVERT_TZ(NOW(), %1$s, %2$s), \'%%m%%d\') AND DATE_FORMAT(CONVERT_TZ(\'2000-01-01 %4$s\', %1$s, %2$s), \'%%H%%i\') <= DATE_FORMAT(CONVERT_TZ(NOW(), %1$s, %2$s), \'%%H%%i\')', $dbZoneOffset, $userZoneOffset, $delayInterval, $at, table('subscriber_fields.value')));
         }
 
         // make sure the event is not yet trigger within the year
@@ -1101,10 +1110,10 @@ class AutoEvent extends Model
         \DB::statement(sprintf("CREATE TEMPORARY TABLE `_new_subscribers_to_follow` AS SELECT COALESCE(subscriber_id, 0) AS subscriber_id FROM %s WHERE auto_event_id = %s; CREATE INDEX _new_subscribers_to_follow_index ON _new_subscribers_to_follow(subscriber_id);", table('auto_triggers'), $this->id));
 
         return $this->automation->subscribers()
-                    ->whereRaw(table('subscribers.id').' NOT IN (SELECT subscriber_id FROM _new_subscribers_to_follow)')
-                    ->where('subscribers.created_at', '>=', $this->created_at)
-                    ->whereRaw(sprintf('COALESCE('.table('subscribers.subscription_type').", '') <> %s", db_quote(Subscriber::SUBSCRIPTION_TYPE_IMPORTED)))
-                    ->get();
+            ->whereRaw(table('subscribers.id') . ' NOT IN (SELECT subscriber_id FROM _new_subscribers_to_follow)')
+            ->where('subscribers.created_at', '>=', $this->created_at)
+            ->whereRaw(sprintf('COALESCE(' . table('subscribers.subscription_type') . ", '') <> %s", db_quote(Subscriber::SUBSCRIPTION_TYPE_IMPORTED)))
+            ->get();
     }
 
     /**
@@ -1114,7 +1123,7 @@ class AutoEvent extends Model
      */
     public function getOpenedMessagesToFollow()
     {
-        $messages = TrackingLog::select('tracking_logs.*')->join('open_logs', 'tracking_logs.message_id', '=', 'open_logs.message_id')->join('auto_triggers', 'tracking_logs.auto_trigger_id', '=', 'auto_triggers.id')->join('auto_events', 'auto_triggers.auto_event_id', '=', 'auto_events.id')->where('auto_event_id', $this->previousEvent->id)->whereRaw(sprintf(table('tracking_logs').'.subscriber_id NOT IN (SELECT COALESCE(subscriber_id, 0) FROM %s WHERE auto_event_id = %s)', table('auto_triggers'), $this->id))->get();
+        $messages = TrackingLog::select('tracking_logs.*')->join('open_logs', 'tracking_logs.message_id', '=', 'open_logs.message_id')->join('auto_triggers', 'tracking_logs.auto_trigger_id', '=', 'auto_triggers.id')->join('auto_events', 'auto_triggers.auto_event_id', '=', 'auto_events.id')->where('auto_event_id', $this->previousEvent->id)->whereRaw(sprintf(table('tracking_logs') . '.subscriber_id NOT IN (SELECT COALESCE(subscriber_id, 0) FROM %s WHERE auto_event_id = %s)', table('auto_triggers'), $this->id))->get();
 
         // one message could be opened more than one time
         // @todo: use array_uniq_by() helper function for far better performance thant Collection::uniq()
@@ -1188,7 +1197,7 @@ class AutoEvent extends Model
      */
     public function getClickedMessagesToFollow()
     {
-        $messages = TrackingLog::select('tracking_logs.*')->join('click_logs', 'tracking_logs.message_id', '=', 'click_logs.message_id')->join('auto_triggers', 'tracking_logs.auto_trigger_id', '=', 'auto_triggers.id')->join('auto_events', 'auto_triggers.auto_event_id', '=', 'auto_events.id')->where('auto_event_id', $this->previousEvent->id)->whereRaw(sprintf(table('tracking_logs').'.subscriber_id NOT IN (SELECT COALESCE(subscriber_id, 0) FROM %s WHERE auto_event_id = %s)', table('auto_triggers'), $this->id))->get();
+        $messages = TrackingLog::select('tracking_logs.*')->join('click_logs', 'tracking_logs.message_id', '=', 'click_logs.message_id')->join('auto_triggers', 'tracking_logs.auto_trigger_id', '=', 'auto_triggers.id')->join('auto_events', 'auto_triggers.auto_event_id', '=', 'auto_events.id')->where('auto_event_id', $this->previousEvent->id)->whereRaw(sprintf(table('tracking_logs') . '.subscriber_id NOT IN (SELECT COALESCE(subscriber_id, 0) FROM %s WHERE auto_event_id = %s)', table('auto_triggers'), $this->id))->get();
 
         // one message could be clicked more than one time
         $unique = $messages->unique(function ($item) {
@@ -1206,13 +1215,13 @@ class AutoEvent extends Model
     public function getUnsubscribersToFollow()
     {
         return $this->automation->subscribers()
-                    ->addSelect('unsubscribe_logs.created_at AS unsubscribed_at')
-                    ->addSelect('tracking_logs.message_id')
-                    ->join('tracking_logs', 'subscribers.id', '=', 'tracking_logs.subscriber_id')
-                    ->join('unsubscribe_logs', 'tracking_logs.message_id', '=', 'unsubscribe_logs.message_id')
-                    ->whereRaw(sprintf(table('subscribers').'.id NOT IN (SELECT COALESCE(subscriber_id, 0) FROM %s WHERE auto_event_id = %s)', table('auto_triggers'), $this->id))
-                    ->where('unsubscribe_logs.created_at', '>=', $this->created_at)
-                    ->get();
+            ->addSelect('unsubscribe_logs.created_at AS unsubscribed_at')
+            ->addSelect('tracking_logs.message_id')
+            ->join('tracking_logs', 'subscribers.id', '=', 'tracking_logs.subscriber_id')
+            ->join('unsubscribe_logs', 'tracking_logs.message_id', '=', 'unsubscribe_logs.message_id')
+            ->whereRaw(sprintf(table('subscribers') . '.id NOT IN (SELECT COALESCE(subscriber_id, 0) FROM %s WHERE auto_event_id = %s)', table('auto_triggers'), $this->id))
+            ->where('unsubscribe_logs.created_at', '>=', $this->created_at)
+            ->get();
     }
 
     /**

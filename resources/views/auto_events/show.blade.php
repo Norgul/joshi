@@ -9,8 +9,9 @@
 											<form action="{{ action('AutoEventController@update', $auto_event->uid) }}" method="POST" class="form-validate-jqueryz auto-event-form">
 												{{ csrf_field() }}
 												<input type="hidden" name="_method" value="PATCH">
+												<input type="hidden" name="_auto-event-id" value="{{ $auto_event->id }}">
 												<h6 class="panel-title text-semibold auto-event-form-line">
-													{{ trans('messages.wait') }}
+													{{ "($auto_event->id) " . trans('messages.wait') }}
 													@include('helpers.form_control', [
 														'type' => 'text',
 														'name' => 'delay_value',
@@ -28,7 +29,17 @@
 														'options' => MailChamp\Model\AutoEvent::timeUnitOptions(),
 														'rules' => []
 													])
-													{{ trans('messages.after_previous_email_is') }}
+													after event
+													@include('helpers.form_control', [
+														'type' => 'mailSelect',
+														'name' => 'previous_event_id',
+														'multiple' => '',
+														'label' => '',
+														'value' => $auto_event->previous_event_id,
+														'options' => $auto_event->relatedEvents(),
+														'rules' => []
+													])
+													is
 													<span class="select-medium">
 														@include('helpers.form_control', [
 															'type' => 'select',

@@ -422,6 +422,18 @@
                 <![endif]-->
             </td>
         </tr>
+        <tr class="block prev_next">
+            <td class="prev-next">
+                <table width="100%">
+                    <tr>
+                        <td class="inner contents">
+                            <a href="{{ url('') }}"><button>Previous</button></a>
+                            <a href="{{ url('') }}"><button>Next</button></a>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
         <tr class="block button">
             <td class="button-row">
                 <a href="#no-link" style="padding-top:15px; padding-right:30px; padding-bottom:15px; padding-left:30px;border-radius:3px; background-color:#6DC6DD;color:#FFFFFF; font-family:Helvetica, Arial, sans-serif; font-size:16px; font-weight:bold; text-decoration:none;">Button Text</a>
@@ -476,6 +488,10 @@
             <div class="block tool-item" template="image_left">
                 <i class="icon-newspaper"></i>
                 <label>{{ trans('messages.image_left') }}</label>
+            </div>
+            <div class="block tool-item" template="prev_next">
+                <i class="icon icon-arrow-resize7"></i>
+                <label>{{ trans('messages.prev_next') }}</label>
             </div>
             <!--<div class="block tool-item" template="button">
                 <i class="icon-newspaper"></i>

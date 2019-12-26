@@ -1250,6 +1250,15 @@ $(function() {
             if(new_line.find('.event-campaigns-container').length) {
                 loadAutomationEmail(new_line.find('.event-campaigns-container'));
             }
+
+            // Adding last added auto-event ID's for use in previous events on automations
+            var currentOnScreenEvents = $('.control-mailSelect .select-search');
+            var autoEventIdSelector = $('[name="_auto-event-id"]');
+            var autoEventId = autoEventIdSelector[autoEventIdSelector.length - 1].value;
+
+            for(var i = 0; i<currentOnScreenEvents.length - 1; i++){
+                currentOnScreenEvents[i].append(new Option(autoEventId));
+            }
         });
     });
 
